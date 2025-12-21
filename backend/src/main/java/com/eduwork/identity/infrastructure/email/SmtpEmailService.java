@@ -7,8 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import jakarta.mail.internet.MimeMessage;
 
 /**
  * Email service implementation using Spring Mail (SMTP).
@@ -69,6 +72,104 @@ public class SmtpEmailService implements EmailService {
             log.info("Password reset email sent successfully to: {}", user.getEmail());
         } catch (Exception e) {
             log.error("Failed to send password reset email to: {}", user.getEmail(), e);
+        }
+    }
+
+    @Override
+    public void sendWelcomeEmail(String to, String fullName) {
+        String subject = "Welcome to Eduwork!";
+        String body = String.format(
+                "Hi %s,\n\n" +
+                        "Welcome to Eduwork! We're excited to have you on board.\n\n" +
+                        "Best regards,\n" +
+                        "The Eduwork Team",
+                fullName);
+
+        send(to, subject, body);
+    }
+
+    @Override
+    public void sendVerificationEmail(String to, String fullName, String verificationLink) {
+        String subject = "Verify Your Eduwork Account";
+        String body = String.format(
+                """
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <style>
+                                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                                .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+                                .content { padding: 20px; background-color: #f9f9f9; }
+                                .button {
+                                    display: inline-block;
+                                    padding: 12px 24px;
+                                    background-color: #4CAF50;
+                                    color: white !important;
+                                    text-decoration: none;
+                                    border-radius: 4px;
+                                    margin: 20px 0;
+                                }
+                                .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                                .warning { color: #f44336; font-size: 14px; margin-top: 15px; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <div class="header">
+                                    <h1>Welcome to Eduwork!</h1>
+                                </div>
+                                <div class="content">
+                                    <h2>Hi %s,</h2>
+                                    <p>Thank you for signing up! Please verify your email address to activate your account.</p>
+                                    <p>Click the button below to verify your email:</p>
+                                    <p style="text-align: center;">
+                                        <a href="%s" class="button">Verify Email Address</a>
+                                    </p>
+                                    <p>Or copy and paste this link into your browser:</p>
+                                    <p style="word-break: break-all; background-color: #fff; padding: 10px; border: 1px solid #ddd;">%s</p>
+                                    <p class="warning">⚠️ This link will expire in 15 minutes.</p>
+                                    <p>If you didn't create an account with Eduwork, please ignore this email.</p>
+                                </div>
+                                <div class="footer">
+                                    <p>&copy; 2024 Eduwork. All rights reserved.</p>
+                                    <p>This is an automated email. Please do not reply.</p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                        """,
+                fullName, verificationLink, verificationLink);
+
+        sendHtml(to, subject, body);
+    }
+
+    private void send(String to, String subject, String body) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Plain text email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send plain text email to: {}", to, e);
+        }
+    }
+
+    private void sendHtml(String to, String subject, String htmlBody) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true); // true indicates HTML content
+            mailSender.send(message);
+            log.info("HTML email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send HTML email to: {}", to, e);
         }
     }
 

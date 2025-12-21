@@ -4,7 +4,10 @@ import com.eduwork.identity.application.command.RegisterUserCommand;
 import com.eduwork.common.dto.ApiResponse;
 import com.eduwork.identity.application.dto.UserResponseDTO;
 import com.eduwork.identity.application.usecase.RegisterUserUseCase;
+import com.eduwork.identity.application.usecase.ResendVerificationEmailUseCase;
+import com.eduwork.identity.application.usecase.VerifyEmailUseCase;
 import com.eduwork.identity.presentation.dto.RegisterRequest;
+import com.eduwork.identity.presentation.dto.ResendVerificationRequest;
 import com.eduwork.identity.presentation.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final RegisterUserUseCase registerUserUseCase;
+    private final VerifyEmailUseCase verifyEmailUseCase;
+    private final ResendVerificationEmailUseCase resendVerificationEmailUseCase;
 
     /**
      * Register a new user (student or mentor).
@@ -66,6 +71,57 @@ public class AuthController {
                 "User registered successfully. Please check your email to verify your account.");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+    }
+
+    /**
+     * Verify user email address using token.
+     * 
+     * @param token verification token from email link
+     * @return success response
+     *         Response format:
+     *         {
+     *         "success": true,
+     *         "timestamp": "2025-12-21T08:00:00Z",
+     *         "message": "Email verified successfully! You can now log in."
+     *         }
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam("token") String token) {
+        log.info("Email verification request received");
+
+        verifyEmailUseCase.execute(token);
+
+        ApiResponse<Void> apiResponse = ApiResponse.success(
+                null,
+                "Email verified successfully! You can now log in.");
+
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    /**
+     * Resend verification email to user.
+     * 
+     * @param request email address to resend verification
+     * @return success response
+     *         Response format:
+     *         {
+     *         "success": true,
+     *         "timestamp": "2025-12-21T08:00:00Z",
+     *         "message": "Verification email sent. Please check your inbox."
+     *         }
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+        log.info("Resend verification request received for email: {}", request.getEmail());
+
+        resendVerificationEmailUseCase.execute(request.getEmail());
+
+        ApiResponse<Void> apiResponse = ApiResponse.success(
+                null,
+                "Verification email sent. Please check your inbox.");
+
+        return ResponseEntity.ok(apiResponse);
     }
 
     /**

@@ -77,6 +77,12 @@ spring:
 app:
   name: Eduwork Platform
   version: 0.1.0
+  verification:
+    token-expiration: 900000  # 15 minutes in milliseconds
+    max-resend-attempts: 3
+    resend-cooldown: 300000  # 5 minutes in milliseconds
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
   
   # JWT Configuration
   jwt:
@@ -97,10 +103,6 @@ app:
     max-file-size: 5MB
     max-request-size: 10MB
     allowed-extensions: jpg,jpeg,png,pdf
-  
-  # Frontend URL (for CORS and email links)
-  frontend:
-    url: http://localhost:3000
   
   # Admin Configuration
   admin:

@@ -1,0 +1,51 @@
+# Test Configuration
+spring:
+  # Test Profile - Uses H2 in-memory database
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA Configuration for H2
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop  # Auto-create schema for tests
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # Disable Flyway for tests (we use JPA auto-DDL instead)
+  flyway:
+    enabled: false
+  
+  # Disable other services for faster tests
+  data:
+    redis:
+      repositories:
+        enabled: false
+    elasticsearch:
+      repositories:
+        enabled: false
+  
+  mail:
+    host: localhost
+    port: 1025
+    
+# Disable security for tests
+app:
+  jwt:
+    secret: test-secret-key-for-unit-tests-only-minimum-256-bits
+    expiration: 3600000
+  
+  security:
+    max-login-attempts: 3
+    account-lock-duration: 60000
+
+logging:
+  level:
+    root: INFO
+    com.eduwork: DEBUG
+    org.testcontainers: INFO

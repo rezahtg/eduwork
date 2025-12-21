@@ -1,0 +1,78 @@
+# Development Profile Configuration (Docker-based Stack)
+# All services run via docker-compose for local development
+spring:
+  # PostgreSQL Database (via Docker)
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:eduwork_dev}
+    username: ${DB_USERNAME:eduwork_user}
+    password: ${DB_PASSWORD:eduwork_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update  # Auto-update schema for dev
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+  
+  # Flyway Migration
+  flyway:
+    enabled: false
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  
+  # Mail Configuration (MailHog via Docker)
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: 
+    password: 
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+  
+  # Redis Configuration (via Docker)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  
+  # Elasticsearch Configuration (via Docker)
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URI:http://localhost:9200}
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eduwork: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+
+# Application Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-secret-key-for-local-development-only}
+    expiration: 86400000  # 24 hours
+  mail:
+    from: ${MAIL_FROM:noreply@eduwork-dev.com}
+    verification-url: ${APP_URL:http://localhost:8080}/api/v1/auth/verify-email
+
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param

@@ -1,0 +1,160 @@
+# Spring Application Configuration
+spring:
+  application:
+    name: eduwork-platform
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/eduwork_dev
+    username: eduwork_user
+    password: eduwork_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update  # Auto-create/update tables for dev
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Flyway Configuration
+  flyway:
+    enabled: false
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: public
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      timeout: 60000
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  
+  # Elasticsearch Configuration
+  elasticsearch:
+    uris: http://localhost:9200
+  
+  # Mail Configuration (for development with MailHog)
+  mail:
+    host: localhost
+    port: 2025
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+  
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Jakarta
+    default-property-inclusion: non_null
+
+# Application Configuration
+app:
+  name: Eduwork Platform
+  version: 0.1.0
+  
+  # JWT Configuration
+  jwt:
+    secret: ${JWT_SECRET:default-secret-key-change-in-production-minimum-256-bits}
+    expiration: 86400000 # 24 hours in milliseconds
+    refresh-expiration: 604800000 # 7 days
+  
+  # Security Configuration
+  security:
+    max-login-attempts: 5
+    account-lock-duration: 1800000 # 30 minutes
+    rate-limit:
+      enabled: true
+      requests-per-minute: 60
+  
+  # File Upload Configuration
+  upload:
+    max-file-size: 5MB
+    max-request-size: 10MB
+    allowed-extensions: jpg,jpeg,png,pdf
+  
+  # Frontend URL (for CORS and email links)
+  frontend:
+    url: http://localhost:3000
+  
+  # Admin Configuration
+  admin:
+    default-email: admin@eduwork.id
+    default-password: ${ADMIN_PASSWORD:ChangeMe123!}
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+  compression:
+    enabled: true
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eduwork: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/eduwork.log
+    max-size: 10MB
+    max-history: 30
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Springdoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  show-actuator: false

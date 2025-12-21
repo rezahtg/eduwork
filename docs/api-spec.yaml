@@ -1,0 +1,1433 @@
+openapi: 3.0.3
+info:
+  title: Eduwork Platform API
+  version: 1.0.0
+  description: |
+    3rd party education marketplace API connecting Mentors with Students.
+    
+    ## API Modules
+    - **Identity**: User registration, authentication, profile, KYC
+    - **Schedule**: Mentor schedule management, discovery
+    - **Booking**: Session booking and management
+    - **Discussion**: Pre-booking and in-session chat
+    - **Payment**: Manual payment verification, settlement
+    - **Admin**: Platform administration
+
+servers:
+  - url: https://api.eduwork.id/v1
+    description: Production
+  - url: https://api.staging.eduwork.id/v1
+    description: Staging
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: Users
+    description: User profile and KYC management
+  - name: Schedules
+    description: Mentor schedule creation and discovery
+  - name: Bookings
+    description: Session booking workflow
+  - name: Discussions
+    description: Pre-booking and booking discussions
+  - name: Payments
+    description: Payment and settlement management
+  - name: Admin
+    description: Admin operations
+
+paths:
+  # ============ AUTH APIs ============
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      description: |
+        **Purpose**: Create new student or mentor account.
+        User receives verification email. Profile completion required for full access.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created, verification email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      description: |
+        **Purpose**: Authenticate user and create session.
+        Includes brute force protection - account locked after 5 failed attempts.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+        '423':
+          description: Account locked due to too many failed attempts
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout user
+      description: |
+        **Purpose**: Invalidate current session token.
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify email address
+      description: |
+        **Purpose**: Confirm email ownership using token from verification email.
+      operationId: verifyEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Email verified
+        '400':
+          description: Invalid or expired token
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      description: |
+        **Purpose**: Send password reset link to user's email.
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent if account exists
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password
+      description: |
+        **Purpose**: Set new password using reset token.
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Invalid or expired token
+
+  # ============ USER APIs ============
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      description: |
+        **Purpose**: Retrieve authenticated user's profile and completion status.
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /users/me/profile:
+    put:
+      tags: [Users]
+      summary: Complete/update profile
+      description: |
+        **Purpose**: Complete profile for full platform access.
+        Students must provide grade/school. Mentors must provide expertise.
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /users/me/kyc:
+    post:
+      tags: [Users]
+      summary: Submit KYC documents
+      description: |
+        **Purpose**: Upload identity and credential documents for verification.
+        Required for both students (ID) and mentors (ID + credentials).
+      operationId: submitKyc
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/KycSubmission'
+      responses:
+        '201':
+          description: KYC submitted for review
+
+  /users/me/bank-accounts:
+    post:
+      tags: [Users]
+      summary: Add bank account
+      description: |
+        **Purpose**: Add bank account for payment settlement (mentors).
+      operationId: addBankAccount
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountRequest'
+      responses:
+        '201':
+          description: Bank account added
+
+  /users/{userId}/public:
+    get:
+      tags: [Users]
+      summary: Get public mentor profile
+      description: |
+        **Purpose**: View mentor's public profile for search results.
+      operationId: getPublicProfile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorPublicProfile'
+
+  # ============ SCHEDULE APIs ============
+  /schedules:
+    get:
+      tags: [Schedules]
+      summary: Search available schedules
+      description: |
+        **Purpose**: Discover mentor schedules. Supports filtering by subject, date, price, type.
+        Uses Elasticsearch for fast discovery.
+      operationId: searchSchedules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: sessionType
+          in: query
+          schema:
+            type: string
+            enum: [PRIVATE, GROUP]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: priceMin
+          in: query
+          schema:
+            type: number
+        - name: priceMax
+          in: query
+          schema:
+            type: number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleSearchResponse'
+
+    post:
+      tags: [Schedules]
+      summary: Create schedule
+      description: |
+        **Purpose**: Mentor creates available time slot for tutoring.
+        Quality constraints enforced: max 8 hours/day, 15 min rest between sessions.
+      operationId: createSchedule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+      responses:
+        '201':
+          description: Schedule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+        '400':
+          description: Quality constraint violation
+
+  /schedules/{scheduleId}:
+    get:
+      tags: [Schedules]
+      summary: Get schedule details
+      description: |
+        **Purpose**: View full schedule details including mentor info and booking status.
+      operationId: getSchedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Schedule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleDetail'
+
+    put:
+      tags: [Schedules]
+      summary: Update schedule
+      description: |
+        **Purpose**: Mentor updates schedule details. Cannot update if bookings exist.
+      operationId: updateSchedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScheduleRequest'
+      responses:
+        '200':
+          description: Schedule updated
+
+  /schedules/{scheduleId}/extend-waiting:
+    post:
+      tags: [Schedules]
+      summary: Extend group waiting period
+      description: |
+        **Purpose**: Mentor extends deadline for group minimum to be reached.
+      operationId: extendGroupWaiting
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extendUntil:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Waiting period extended
+
+  /schedules/{scheduleId}/start-anyway:
+    post:
+      tags: [Schedules]
+      summary: Start session despite min not reached
+      description: |
+        **Purpose**: Mentor chooses to proceed with fewer than minimum students.
+      operationId: startSessionAnyway
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session will proceed
+
+  /schedules/mentor/my-schedules:
+    get:
+      tags: [Schedules]
+      summary: Get mentor's own schedules
+      description: |
+        **Purpose**: Mentor views their created schedules with booking status.
+      operationId: getMySchedules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, FULL, IN_PROGRESS, COMPLETED]
+      responses:
+        '200':
+          description: Mentor's schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleWithBookings'
+
+  # ============ BOOKING APIs ============
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create booking
+      description: |
+        **Purpose**: Student books a schedule. Creates pending payment transaction.
+      operationId: createBooking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created, pending payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingWithPaymentInfo'
+
+  /bookings/my-bookings:
+    get:
+      tags: [Bookings]
+      summary: Get student's bookings
+      description: |
+        **Purpose**: Student views their booking history and upcoming sessions.
+      operationId: getMyBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student's bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingDetail'
+
+  /bookings/{bookingId}:
+    get:
+      tags: [Bookings]
+      summary: Get booking details
+      description: |
+        **Purpose**: View booking details including live session link when available.
+      operationId: getBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+
+  /bookings/{bookingId}/complete:
+    post:
+      tags: [Bookings]
+      summary: Mark session complete
+      description: |
+        **Purpose**: Student or mentor confirms session completion. Triggers payment release.
+      operationId: completeBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Completion recorded
+
+  /bookings/{bookingId}/attendance:
+    post:
+      tags: [Bookings]
+      summary: Record attendance
+      description: |
+        **Purpose**: Record check-in/check-out for session participants.
+      operationId: recordAttendance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceRecord'
+      responses:
+        '200':
+          description: Attendance recorded
+
+  # ============ DISCUSSION APIs ============
+  /discussions/pre-booking:
+    post:
+      tags: [Discussions]
+      summary: Start pre-booking discussion
+      description: |
+        **Purpose**: Student initiates discussion with mentor before booking.
+      operationId: startPreBookingDiscussion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduleId:
+                  type: string
+                  format: uuid
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Discussion started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Discussion'
+
+  /discussions/{discussionId}/messages:
+    get:
+      tags: [Discussions]
+      summary: Get discussion messages
+      description: |
+        **Purpose**: Retrieve chat history for a discussion.
+      operationId: getMessages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: discussionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+    post:
+      tags: [Discussions]
+      summary: Send message
+      description: |
+        **Purpose**: Send message in a discussion thread.
+      operationId: sendMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: discussionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+      responses:
+        '201':
+          description: Message sent
+
+  /bookings/{bookingId}/discussion:
+    get:
+      tags: [Discussions]
+      summary: Get booking discussion
+      description: |
+        **Purpose**: Access in-session discussion for a booking.
+      operationId: getBookingDiscussion
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking discussion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Discussion'
+
+  # ============ PAYMENT APIs ============
+  /payments/{transactionId}/proof:
+    post:
+      tags: [Payments]
+      summary: Submit payment proof
+      description: |
+        **Purpose**: Student uploads bank transfer proof for admin verification.
+      operationId: submitPaymentProof
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                proof:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Proof submitted for verification
+
+  /payments/{transactionId}:
+    get:
+      tags: [Payments]
+      summary: Get transaction status
+      description: |
+        **Purpose**: Check payment/transaction status.
+      operationId: getTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /disputes:
+    post:
+      tags: [Payments]
+      summary: Raise dispute
+      description: |
+        **Purpose**: Student raises dispute for incomplete/problematic session.
+        Prevents payment release until resolved.
+      operationId: raiseDispute
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDisputeRequest'
+      responses:
+        '201':
+          description: Dispute created
+
+  # ============ ADMIN APIs ============
+  /admin/kyc/pending:
+    get:
+      tags: [Admin]
+      summary: Get pending KYC reviews
+      description: |
+        **Purpose**: Admin retrieves list of KYC submissions awaiting review.
+      operationId: getPendingKyc
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending KYC list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KycReview'
+
+  /admin/kyc/{kycId}/approve:
+    post:
+      tags: [Admin]
+      summary: Approve KYC
+      description: |
+        **Purpose**: Admin approves user KYC documents.
+      operationId: approveKyc
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: kycId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: KYC approved
+
+  /admin/kyc/{kycId}/reject:
+    post:
+      tags: [Admin]
+      summary: Reject KYC
+      description: |
+        **Purpose**: Admin rejects KYC with reason.
+      operationId: rejectKyc
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: kycId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: KYC rejected
+
+  /admin/payments/pending-verification:
+    get:
+      tags: [Admin]
+      summary: Get pending payment verifications
+      description: |
+        **Purpose**: Admin retrieves payment proofs awaiting verification.
+      operationId: getPendingPayments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentVerification'
+
+  /admin/payments/{transactionId}/verify:
+    post:
+      tags: [Admin]
+      summary: Verify payment
+      description: |
+        **Purpose**: Admin confirms payment proof is valid. Triggers booking confirmation.
+      operationId: verifyPayment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Payment verified
+
+  /admin/payments/{transactionId}/reject:
+    post:
+      tags: [Admin]
+      summary: Reject payment proof
+      description: |
+        **Purpose**: Admin rejects invalid payment proof with reason.
+      operationId: rejectPayment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Payment rejected
+
+  /admin/disputes:
+    get:
+      tags: [Admin]
+      summary: Get open disputes
+      description: |
+        **Purpose**: Admin retrieves disputes requiring resolution.
+      operationId: getDisputes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dispute list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisputeDetail'
+
+  /admin/disputes/{disputeId}/resolve:
+    post:
+      tags: [Admin]
+      summary: Resolve dispute
+      description: |
+        **Purpose**: Admin resolves dispute with refund/release decision.
+      operationId: resolveDispute
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeResolution'
+      responses:
+        '200':
+          description: Dispute resolved
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [STUDENT, MENTOR]
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        profileComplete:
+          type: boolean
+        kycStatus:
+          type: string
+        profile:
+          type: object
+          properties:
+            fullName:
+              type: string
+            avatarUrl:
+              type: string
+            bio:
+              type: string
+            grade:
+              type: string
+            schoolName:
+              type: string
+            expertise:
+              type: array
+              items:
+                type: string
+            teachingExperienceYears:
+              type: integer
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        bio:
+          type: string
+        grade:
+          type: string
+        schoolName:
+          type: string
+        expertise:
+          type: array
+          items:
+            type: string
+        teachingExperienceYears:
+          type: integer
+
+    KycSubmission:
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum: [ID_CARD, TEACHING_CERT, STUDENT_CARD]
+        document:
+          type: string
+          format: binary
+
+    BankAccountRequest:
+      type: object
+      properties:
+        bankName:
+          type: string
+        accountNumber:
+          type: string
+        accountHolderName:
+          type: string
+
+    MentorPublicProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        avatarUrl:
+          type: string
+        bio:
+          type: string
+        expertise:
+          type: array
+          items:
+            type: string
+        teachingExperienceYears:
+          type: integer
+        rating:
+          type: number
+        totalSessions:
+          type: integer
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        mentorId:
+          type: string
+        subject:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        pricePerSession:
+          type: number
+        sessionType:
+          type: string
+        maxStudents:
+          type: integer
+        minStudents:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    ScheduleSearchResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleDetail'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        page:
+          type: integer
+
+    ScheduleDetail:
+      allOf:
+        - $ref: '#/components/schemas/Schedule'
+        - type: object
+          properties:
+            mentor:
+              $ref: '#/components/schemas/MentorPublicProfile'
+            availableSlots:
+              type: integer
+            bookedCount:
+              type: integer
+
+    CreateScheduleRequest:
+      type: object
+      required: [subject, title, pricePerSession, sessionType, startTime, endTime]
+      properties:
+        subject:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        pricePerSession:
+          type: number
+        sessionType:
+          type: string
+          enum: [PRIVATE, GROUP]
+        maxStudents:
+          type: integer
+        minStudents:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        recurrenceRule:
+          type: string
+
+    UpdateScheduleRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        pricePerSession:
+          type: number
+
+    ScheduleWithBookings:
+      allOf:
+        - $ref: '#/components/schemas/Schedule'
+        - type: object
+          properties:
+            bookings:
+              type: array
+              items:
+                $ref: '#/components/schemas/BookingDetail'
+
+    CreateBookingRequest:
+      type: object
+      required: [scheduleId]
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        bookingType:
+          type: string
+          enum: [PRIVATE, GROUP]
+
+    BookingWithPaymentInfo:
+      type: object
+      properties:
+        booking:
+          $ref: '#/components/schemas/BookingDetail'
+        paymentInfo:
+          type: object
+          properties:
+            transactionId:
+              type: string
+            amount:
+              type: number
+            bankName:
+              type: string
+            accountNumber:
+              type: string
+            accountHolderName:
+              type: string
+
+    BookingDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scheduleId:
+          type: string
+        studentId:
+          type: string
+        bookingType:
+          type: string
+        status:
+          type: string
+        bookedAt:
+          type: string
+          format: date-time
+        schedule:
+          $ref: '#/components/schemas/ScheduleDetail'
+        liveSession:
+          type: object
+          properties:
+            platform:
+              type: string
+            meetingUrl:
+              type: string
+            meetingPassword:
+              type: string
+
+    AttendanceRecord:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [CHECK_IN, CHECK_OUT]
+
+    Discussion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [PRE_BOOKING, BOOKING]
+        scheduleId:
+          type: string
+        bookingId:
+          type: string
+        status:
+          type: string
+        lastMessageAt:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+        senderName:
+          type: string
+        content:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+        amount:
+          type: number
+        platformFee:
+          type: number
+        mentorAmount:
+          type: number
+        paymentMethod:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateDisputeRequest:
+      type: object
+      required: [transactionId, reason, description]
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [SESSION_NOT_CONDUCTED, QUALITY_ISSUE, OTHER]
+        description:
+          type: string
+        evidenceUrls:
+          type: array
+          items:
+            type: string
+
+    KycReview:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        documentType:
+          type: string
+        documentUrl:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    PaymentVerification:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        bookingId:
+          type: string
+        amount:
+          type: number
+        proofUrl:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        student:
+          $ref: '#/components/schemas/UserProfile'
+
+    DisputeDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        transactionId:
+          type: string
+        reason:
+          type: string
+        description:
+          type: string
+        evidenceUrls:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        raisedBy:
+          $ref: '#/components/schemas/UserProfile'
+        booking:
+          $ref: '#/components/schemas/BookingDetail'
+
+    DisputeResolution:
+      type: object
+      required: [resolutionType]
+      properties:
+        resolutionType:
+          type: string
+          enum: [REFUND_FULL, REFUND_PARTIAL, RELEASE_TO_MENTOR, SPLIT]
+        refundAmount:
+          type: number
+        mentorAmount:
+          type: number
+        notes:
+          type: string

@@ -206,4 +206,60 @@ public class SmtpEmailService implements EmailService {
                 The Eduwork Team
                 """.formatted(resetUrl);
     }
+
+    @Override
+    @Async
+    public void sendPasswordResetConfirmationEmail(String to, String fullName) {
+        try {
+            log.info("Sending password reset confirmation email to: {}", to);
+
+            String subject = "Password Changed Successfully - Eduwork";
+            String body = buildPasswordResetConfirmationEmailBody(fullName);
+
+            sendHtml(to, subject, body);
+
+            log.info("Password reset confirmation email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send password reset confirmation email to: {}", to, e);
+        }
+    }
+
+    private String buildPasswordResetConfirmationEmailBody(String fullName) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
+                        .content { padding: 30px; background-color: #f9f9f9; }
+                        .button { display: inline-block; padding: 12px 30px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Password Changed</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hi %s,</p>
+                            <p>Your password for Eduwork was successfully changed.</p>
+                            <p><strong>If you made this change, you can safely ignore this email.</strong></p>
+                            <p>If you did NOT make this change, please contact our support team immediately, as your account may have been compromised.</p>
+                            <p style="margin-top: 30px;">
+                                <a href="${FRONTEND_URL}/login" class="button">Login Now</a>
+                            </p>
+                        </div>
+                        <div class="footer">
+                            <p>If you have any questions, contact us at support@eduwork.com</p>
+                            <p>&copy; 2025 Eduwork Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+                .formatted(fullName);
+    }
 }

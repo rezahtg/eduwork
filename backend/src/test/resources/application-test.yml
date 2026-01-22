@@ -33,6 +33,10 @@ spring:
   mail:
     host: localhost
     port: 1025
+  
+  # Servlet configuration (same as production)
+  servlet:
+    context-path: /api/v1
     
 # Disable security for tests
 app:
@@ -43,6 +47,12 @@ app:
   security:
     max-login-attempts: 3
     account-lock-duration: 60000
+    brute-force:
+      max-attempts: 3
+      attempt-window: 15m
+      lock-duration: 30m
+      max-ip-attempts: 10
+      ip-window: 15m
 
 logging:
   level:

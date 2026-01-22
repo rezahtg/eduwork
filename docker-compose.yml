@@ -13,11 +13,31 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-user.sh:/docker-entrypoint-initdb.d/init-user.sh
+      - ./docker/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: >
+      postgres -c hba_file=/etc/postgresql/pg_hba.conf
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U eduwork_user -d eduwork_dev" ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # pgAdmin (PostgreSQL Management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: eduwork-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@eduwork.id
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
 
   # Redis Cache
   redis:
@@ -32,6 +52,15 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  # RedisInsight (Redis Management UI)
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: eduwork-redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
 
   # Elasticsearch
   elasticsearch:
@@ -83,6 +112,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  pgadmin_data:
     driver: local
   redis_data:
     driver: local

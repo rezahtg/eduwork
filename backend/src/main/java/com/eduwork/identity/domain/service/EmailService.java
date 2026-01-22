@@ -41,4 +41,12 @@ public interface EmailService {
      * @param resetToken token for reset link
      */
     void sendPasswordResetEmail(User user, String resetToken);
+
+    /**
+     * Sends password reset confirmation email after successful reset.
+     * 
+     * @param to       recipient email address
+     * @param fullName user's full name
+     */
+    void sendPasswordResetConfirmationEmail(String to, String fullName);
 }

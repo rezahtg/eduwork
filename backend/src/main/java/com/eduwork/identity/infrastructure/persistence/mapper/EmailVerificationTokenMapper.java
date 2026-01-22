@@ -55,6 +55,9 @@ public class EmailVerificationTokenMapper {
                 userEntity.isProfileComplete(),
                 userEntity.getEmailVerifiedAt(),
                 userEntity.getPhoneVerifiedAt(),
+                null, // lockedUntil not relevant for token mapping
+                null, // studentProfile - not needed in token mapper
+                null, // mentorProfile - not needed in token mapper
                 userEntity.getCreatedAt(),
                 userEntity.getUpdatedAt());
 

@@ -47,7 +47,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then - Verify standardized ApiResponse structure
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -72,7 +72,7 @@ class AuthControllerTest {
                                 .role(UserRole.STUDENT)
                                 .build();
 
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(firstRequest)));
 
@@ -84,7 +84,7 @@ class AuthControllerTest {
                                 .build();
 
                 // Then - Verify standardized error response
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(duplicateRequest)))
                                 .andExpect(status().isConflict())
@@ -93,7 +93,7 @@ class AuthControllerTest {
                                 .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"))
                                 .andExpect(jsonPath("$.error.message")
                                                 .value(containsString("Email already registered")))
-                                .andExpect(jsonPath("$.path").value("/api/v1/auth/register"));
+                                .andExpect(jsonPath("$.path").value("/auth/register"));
         }
 
         @Test
@@ -107,7 +107,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest())
@@ -128,7 +128,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest())
@@ -146,7 +146,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isBadRequest())
@@ -167,7 +167,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -186,7 +186,7 @@ class AuthControllerTest {
                                 .build();
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/auth/register")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isCreated())
@@ -194,3 +194,4 @@ class AuthControllerTest {
                                 .andExpect(jsonPath("$.data.email").value("test@example.com"));
         }
 }
+

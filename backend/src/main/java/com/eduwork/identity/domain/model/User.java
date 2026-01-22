@@ -1,6 +1,7 @@
 package com.eduwork.identity.domain.model;
 
 import com.eduwork.identity.domain.exception.InvalidEmailException;
+import jakarta.persistence.Embedded;
 import lombok.Getter;
 
 import java.time.Instant;
@@ -32,8 +33,16 @@ public class User {
     private boolean profileComplete;
     private Instant emailVerifiedAt;
     private Instant phoneVerifiedAt;
+    private Instant lockedUntil; // NEW: For brute force protection
     private Instant createdAt;
     private Instant updatedAt;
+
+    // Role-specific profiles (embedded)
+    @Embedded
+    private StudentProfile studentProfile;
+
+    @Embedded
+    private MentorProfile mentorProfile;
 
     /**
      * Constructor for creating new user (registration).
@@ -62,6 +71,8 @@ public class User {
     public User(UUID id, String email, String phone, String passwordHash,
             UserStatus status, boolean profileComplete,
             Instant emailVerifiedAt, Instant phoneVerifiedAt,
+            Instant lockedUntil,
+            StudentProfile studentProfile, MentorProfile mentorProfile,
             Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.email = email;
@@ -71,6 +82,9 @@ public class User {
         this.profileComplete = profileComplete;
         this.emailVerifiedAt = emailVerifiedAt;
         this.phoneVerifiedAt = phoneVerifiedAt;
+        this.lockedUntil = lockedUntil;
+        this.studentProfile = studentProfile;
+        this.mentorProfile = mentorProfile;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -108,6 +122,20 @@ public class User {
     public void verifyEmail() {
         this.emailVerifiedAt = Instant.now();
         this.status = UserStatus.ACTIVE;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Updates user password.
+     * Used when resetting forgotten password.
+     *
+     * @param newPasswordHash the new hashed password
+     */
+    public void updatePassword(String newPasswordHash) {
+        if (newPasswordHash == null || newPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password hash cannot be null or empty");
+        }
+        this.passwordHash = newPasswordHash;
         this.updatedAt = Instant.now();
     }
 
@@ -156,5 +184,103 @@ public class User {
      */
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
+    }
+
+    /**
+     * Completes student profile.
+     * Sets profileComplete flag to true.
+     *
+     * @param profile student profile data
+     */
+    public void completeStudentProfile(StudentProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException("Student profile cannot be null");
+        }
+        this.studentProfile = profile;
+        this.profileComplete = true;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Completes mentor profile.
+     * Sets profileComplete flag to true.
+     *
+     * @param profile mentor profile data
+     */
+    public void completeMentorProfile(MentorProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException("Mentor profile cannot be null");
+        }
+        this.mentorProfile = profile;
+        this.profileComplete = true;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Updates existing student profile.
+     *
+     * @param profile updated student profile data
+     */
+    public void updateStudentProfile(StudentProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException("Student profile cannot be null");
+        }
+        this.studentProfile = profile;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Updates existing mentor profile.
+     *
+     * @param profile updated mentor profile data
+     */
+    public void updateMentorProfile(MentorProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException("Mentor profile cannot be null");
+        }
+        this.mentorProfile = profile;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Locks the account for a specified duration.
+     * Used for brute force protection.
+     *
+     * @param duration how long the account should remain locked
+     */
+    public void lock(java.time.Duration duration) {
+        if (duration == null || duration.isNegative()) {
+            throw new IllegalArgumentException("Lock duration must be positive");
+        }
+        this.lockedUntil = Instant.now().plus(duration);
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Unlocks the account immediately.
+     */
+    public void unlock() {
+        this.lockedUntil = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Checks if the account is currently locked.
+     * Auto-unlocks if the lock duration has expired.
+     *
+     * @return true if account is locked, false otherwise
+     */
+    public boolean isLocked() {
+        if (lockedUntil == null) {
+            return false;
+        }
+
+        // Check if lock has expired
+        if (Instant.now().isAfter(lockedUntil)) {
+            this.lockedUntil = null; // Auto-unlock
+            return false;
+        }
+
+        return true;
     }
 }

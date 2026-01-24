@@ -1,5 +1,6 @@
 package com.eduwork.identity.application.dto;
 
+import com.eduwork.identity.domain.model.UserStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -17,7 +18,7 @@ public class UserResponseDTO {
     private UUID id;
     private String email;
     private String phone;
-    private String status;
+    private UserStatus status;
     private boolean profileComplete;
     private Instant createdAt;
 

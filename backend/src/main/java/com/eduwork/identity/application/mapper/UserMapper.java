@@ -26,7 +26,7 @@ public class UserMapper {
                 .id(user.getId())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .status(user.getStatus().name())
+                .status(user.getStatus())
                 .profileComplete(user.isProfileComplete())
                 .createdAt(user.getCreatedAt())
                 .build();

@@ -4,17 +4,18 @@ import com.eduwork.identity.application.command.RegisterUserCommand;
 import com.eduwork.identity.application.dto.UserResponseDTO;
 import com.eduwork.identity.application.mapper.UserMapper;
 import com.eduwork.identity.domain.exception.EmailAlreadyExistsException;
+import com.eduwork.identity.domain.model.EmailVerificationToken;
 import com.eduwork.identity.domain.model.User;
+import com.eduwork.identity.domain.repository.EmailVerificationTokenRepository;
 import com.eduwork.identity.domain.repository.UserRepository;
 import com.eduwork.identity.domain.service.EmailService;
 import com.eduwork.identity.domain.service.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 /**
  * Use case for user registration.
@@ -26,8 +27,9 @@ import java.util.UUID;
  * 3. Check phone uniqueness (if provided)
  * 4. Hash password
  * 5. Create user
- * 6. Send verification email (async)
- * 7. Return user response
+ * 6. Create verification token
+ * 7. Send verification email (async)
+ * 8. Return user response
  */
 @Service
 @RequiredArgsConstructor
@@ -35,9 +37,13 @@ import java.util.UUID;
 public class RegisterUserUseCase {
 
     private final UserRepository userRepository;
+    private final EmailVerificationTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final EmailService emailService;
+
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     /**
      * Registers a new user.
@@ -86,22 +92,21 @@ public class RegisterUserUseCase {
         // 6. Save user
         User savedUser = userRepository.save(user);
 
-        // 7. Send verification email asynchronously
-        String verificationToken = generateVerificationToken();
-        emailService.sendVerificationEmail(savedUser, verificationToken);
+        // 7. Create verification token
+        EmailVerificationToken verificationToken = EmailVerificationToken.create(savedUser);
+        tokenRepository.save(verificationToken);
 
-        log.info("User registered successfully: userId={}, email={}",
+        // 8. Send verification email asynchronously
+        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken.getToken();
+        emailService.sendVerificationEmail(
+                savedUser.getEmail(),
+                command.getEmail(), // Using email as name for now
+                verificationLink);
+
+        log.info("User registered successfully: userId={}, email={}. Verification email sent.",
                 savedUser.getId(), savedUser.getEmail());
 
-        // 8. Return response DTO
+        // 9. Return response DTO
         return UserMapper.toResponseDTO(savedUser);
-    }
-
-    /**
-     * Generates secure verification token.
-     * TODO: Use proper token service with Redis storage
-     */
-    private String generateVerificationToken() {
-        return UUID.randomUUID().toString();
     }
 }

@@ -18,10 +18,35 @@ public interface EmailService {
     void sendVerificationEmail(User user, String verificationToken);
 
     /**
+     * Sends verification email with HTML template.
+     * 
+     * @param to               recipient email address
+     * @param fullName         user's full name
+     * @param verificationLink complete verification URL
+     */
+    void sendVerificationEmail(String to, String fullName, String verificationLink);
+
+    /**
+     * Sends welcome email to new user.
+     * 
+     * @param to       recipient email address
+     * @param fullName user's full name
+     */
+    void sendWelcomeEmail(String to, String fullName);
+
+    /**
      * Sends password reset email.
      * 
      * @param user       user requesting reset
      * @param resetToken token for reset link
      */
     void sendPasswordResetEmail(User user, String resetToken);
+
+    /**
+     * Sends password reset confirmation email after successful reset.
+     * 
+     * @param to       recipient email address
+     * @param fullName user's full name
+     */
+    void sendPasswordResetConfirmationEmail(String to, String fullName);
 }

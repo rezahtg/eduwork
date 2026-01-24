@@ -1,5 +1,7 @@
 package com.eduwork.identity.infrastructure.persistence;
 
+import com.eduwork.identity.domain.model.MentorProfile;
+import com.eduwork.identity.domain.model.StudentProfile;
 import com.eduwork.identity.domain.model.UserStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -49,6 +51,16 @@ public class UserEntity {
 
     @Column(name = "phone_verified_at")
     private Instant phoneVerifiedAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    // Embedded profiles
+    @Embedded
+    private StudentProfile studentProfile;
+
+    @Embedded
+    private MentorProfile mentorProfile;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -14,16 +14,17 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      initialization-fail-timeout: -1  # Wait indefinitely for first connection
   
   # JPA Configuration
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update  # Auto-create/update tables for dev
+      ddl-auto: update  # Hibernate manages schema when Flyway is disabled
     show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           batch_size: 20
         order_inserts: true
@@ -31,7 +32,7 @@ spring:
   
   # Flyway Configuration
   flyway:
-    enabled: false
+    enabled: false  # Disabled for testing - Hibernate manages schema
     baseline-on-migrate: true
     locations: classpath:db/migration
     schemas: public
@@ -41,13 +42,23 @@ spring:
     redis:
       host: localhost
       port: 6379
-      password:
-      timeout: 60000
+      password: # No password for local dev
+      timeout: 2000ms
       jedis:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  
+  
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000  # 30 minutes default TTL
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "eduwork:"
   
   # Elasticsearch Configuration
   elasticsearch:
@@ -77,17 +88,31 @@ spring:
 app:
   name: Eduwork Platform
   version: 0.1.0
+  verification:
+    token-expiration: 900000  # 15 minutes in milliseconds
+    max-resend-attempts: 3
+    resend-cooldown: 300000  # 5 minutes in milliseconds
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
   
   # JWT Configuration
   jwt:
-    secret: ${JWT_SECRET:default-secret-key-change-in-production-minimum-256-bits}
-    expiration: 86400000 # 24 hours in milliseconds
-    refresh-expiration: 604800000 # 7 days
+    secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-make-it-long-enough}
+    access-token-expiration: 900000  # 15 minutes in milliseconds
+    refresh-token-expiration: 604800000  # 7 days in milliseconds
+    issuer: eduwork-platform
   
   # Security Configuration
   security:
     max-login-attempts: 5
     account-lock-duration: 1800000 # 30 minutes
+    # Brute Force Protection
+    brute-force:
+      max-attempts: 5 # Lock account after N failed attempts
+      attempt-window: 15m # Time window for counting attempts
+      lock-duration: 30m # How long account stays locked
+      max-ip-attempts: 10 # Max attempts per IP address
+      ip-window: 15m # IP rate limit window
     rate-limit:
       enabled: true
       requests-per-minute: 60
@@ -97,10 +122,6 @@ app:
     max-file-size: 5MB
     max-request-size: 10MB
     allowed-extensions: jpg,jpeg,png,pdf
-  
-  # Frontend URL (for CORS and email links)
-  frontend:
-    url: http://localhost:3000
   
   # Admin Configuration
   admin:
@@ -158,3 +179,10 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
   show-actuator: false
+
+# MinIO Configuration (S3-compatible object storage)
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: eduwork-kyc

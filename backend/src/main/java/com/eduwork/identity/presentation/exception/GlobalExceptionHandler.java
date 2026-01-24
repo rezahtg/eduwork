@@ -1,9 +1,11 @@
 package com.eduwork.identity.presentation.exception;
 
 import com.eduwork.common.dto.ApiResponse;
+import com.eduwork.identity.domain.exception.AccountLockedException;
 import com.eduwork.identity.domain.exception.EmailAlreadyExistsException;
 import com.eduwork.identity.domain.exception.InvalidEmailException;
 import com.eduwork.identity.domain.exception.InvalidPasswordException;
+import com.eduwork.identity.domain.exception.RateLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -110,6 +112,46 @@ public class GlobalExceptionHandler {
                 log.warn("Invalid email: {}", ex.getMessage());
 
                 return ResponseEntity.badRequest().body(response);
+        }
+
+        /**
+         * Handles account locked exception.
+         */
+        @ExceptionHandler(AccountLockedException.class)
+        public ResponseEntity<ApiResponse<Void>> handleAccountLocked(
+                        AccountLockedException ex,
+                        HttpServletRequest request) {
+
+                ApiResponse.ApiError apiError = ApiResponse.ApiError.builder()
+                                .code("ACCOUNT_LOCKED")
+                                .message(ex.getMessage())
+                                .build();
+
+                ApiResponse<Void> response = ApiResponse.error(apiError, request.getRequestURI());
+
+                log.warn("Account locked: {}", ex.getMessage());
+
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
+
+        /**
+         * Handles rate limit exceeded exception.
+         */
+        @ExceptionHandler(RateLimitExceededException.class)
+        public ResponseEntity<ApiResponse<Void>> handleRateLimitExceeded(
+                        RateLimitExceededException ex,
+                        HttpServletRequest request) {
+
+                ApiResponse.ApiError apiError = ApiResponse.ApiError.builder()
+                                .code("RATE_LIMIT_EXCEEDED")
+                                .message(ex.getMessage())
+                                .build();
+
+                ApiResponse<Void> response = ApiResponse.error(apiError, request.getRequestURI());
+
+                log.warn("Rate limit exceeded from IP: {}", request.getRemoteAddr());
+
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
         }
 
         /**

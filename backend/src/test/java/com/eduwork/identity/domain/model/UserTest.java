@@ -211,7 +211,9 @@ class UserTest {
         User user = new User(
                 id, email, null, "hash",
                 UserStatus.ACTIVE, true,
-                now, null, now, now);
+                now, null,
+                null, // lockedUntil
+                null, null, now, now);
 
         // Then
         assertEquals(id, user.getId());

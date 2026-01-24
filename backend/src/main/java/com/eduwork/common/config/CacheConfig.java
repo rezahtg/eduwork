@@ -1,5 +1,9 @@
 package com.eduwork.common.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -28,40 +32,52 @@ import java.util.Map;
 @EnableCaching
 public class CacheConfig {
 
-    /**
-     * Configure Redis-based cache manager with different TTLs per cache.
-     */
-    @Bean
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // Default cache configuration
-        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(30))
-                .disableCachingNullValues()
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair
-                                .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+        /**
+         * Configure Redis-based cache manager with different TTLs per cache.
+         */
+        @Bean
+        public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+                // Configure ObjectMapper with Java 8 date/time support
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.registerModule(new JavaTimeModule());
+                objectMapper.activateDefaultTyping(
+                                BasicPolymorphicTypeValidator.builder()
+                                                .allowIfBaseType(Object.class)
+                                                .build(),
+                                ObjectMapper.DefaultTyping.NON_FINAL,
+                                JsonTypeInfo.As.PROPERTY);
 
-        // Per-cache configurations with different TTLs
-        Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
+                GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-        // User cache - 1 hour TTL (users change infrequently)
-        cacheConfigurations.put("users", defaultConfig.entryTtl(Duration.ofHours(1)));
+                // Default cache configuration
+                RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofMinutes(30))
+                                .disableCachingNullValues()
+                                .serializeKeysWith(
+                                                RedisSerializationContext.SerializationPair
+                                                                .fromSerializer(new StringRedisSerializer()))
+                                .serializeValuesWith(
+                                                RedisSerializationContext.SerializationPair.fromSerializer(serializer));
 
-        // Profile cache - 30 minutes TTL (profiles may be updated more often)
-        cacheConfigurations.put("profiles", defaultConfig.entryTtl(Duration.ofMinutes(30)));
+                // Per-cache configurations with different TTLs
+                Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        // JWT validation cache - 15 minutes TTL (security-sensitive)
-        cacheConfigurations.put("jwt", defaultConfig.entryTtl(Duration.ofMinutes(15)));
+                // User cache - 1 hour TTL (users change infrequently)
+                cacheConfigurations.put("users", defaultConfig.entryTtl(Duration.ofHours(1)));
 
-        // Token validation - 5 minutes TTL (short-lived)
-        cacheConfigurations.put("tokens", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+                // Profile cache - 30 minutes TTL (profiles may be updated more often)
+                cacheConfigurations.put("profiles", defaultConfig.entryTtl(Duration.ofMinutes(30)));
 
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(defaultConfig)
-                .withInitialCacheConfigurations(cacheConfigurations)
-                .transactionAware()
-                .build();
-    }
+                // JWT validation cache - 15 minutes TTL (security-sensitive)
+                cacheConfigurations.put("jwt", defaultConfig.entryTtl(Duration.ofMinutes(15)));
+
+                // Token validation - 5 minutes TTL (short-lived)
+                cacheConfigurations.put("tokens", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+
+                return RedisCacheManager.builder(connectionFactory)
+                                .cacheDefaults(defaultConfig)
+                                .withInitialCacheConfigurations(cacheConfigurations)
+                                .transactionAware()
+                                .build();
+        }
 }

@@ -8,8 +8,10 @@ import com.eduwork.identity.domain.exception.AccountLockedException;
 import com.eduwork.identity.domain.exception.RateLimitExceededException;
 import com.eduwork.identity.domain.model.RefreshToken;
 import com.eduwork.identity.domain.model.User;
+import com.eduwork.identity.domain.model.UserSession;
 import com.eduwork.identity.domain.repository.RefreshTokenRepository;
 import com.eduwork.identity.domain.repository.UserRepository;
+import com.eduwork.identity.domain.repository.UserSessionRepository;
 import com.eduwork.identity.domain.service.BruteForceProtectionService;
 import com.eduwork.identity.infrastructure.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -38,6 +41,7 @@ public class LoginUseCase {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserSessionRepository sessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final BruteForceProtectionService bruteForceProtection;
@@ -115,25 +119,39 @@ public class LoginUseCase {
         // 8. SUCCESS - Reset failed attempts
         bruteForceProtection.recordSuccessfulLogin(email, ipAddress);
 
-        // 9. Generate access token
+        // 9. Create session
+        UUID sessionId = UUID.randomUUID();
+        UserSession session = UserSession.builder()
+                .id(sessionId)
+                .userId(user.getId())
+                .deviceInfo(command.getDeviceInfo() != null ? command.getDeviceInfo() : "Unknown")
+                .ipAddress(ipAddress)
+                .createdAt(Instant.now())
+                .lastAccessedAt(Instant.now())
+                .expiresAt(Instant.now().plus(Duration.ofDays(7))) // 7 days session
+                .build();
+        sessionRepository.save(session);
+
+        // 10. Generate access token
         String accessToken = jwtService.generateAccessToken(user);
 
-        // 10. Generate refresh token
+        // 11. Generate refresh token
         String tokenId = UUID.randomUUID().toString();
         RefreshToken refreshToken = RefreshToken.create(user, tokenId);
         refreshTokenRepository.save(refreshToken);
 
-        // 11. Generate refresh token JWT
+        // 12. Generate refresh token JWT
         String refreshTokenJwt = jwtService.generateRefreshTokenJwt(user.getId(), tokenId);
 
-        log.info("Login successful for user: {}", user.getEmail());
+        log.info("Login successful for user: {}, session: {}", user.getEmail(), sessionId);
 
-        // 12. Return response
+        // 13. Return response
         UserResponseDTO userDto = UserMapper.toResponseDTO(user);
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenJwt)
                 .expiresIn(jwtService.getAccessTokenExpirationSeconds())
+                .sessionId(sessionId)
                 .user(userDto)
                 .build();
     }

@@ -3,9 +3,10 @@ package com.eduwork.identity.infrastructure.persistence;
 import com.eduwork.identity.domain.model.User;
 import com.eduwork.identity.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
+// Caching temporarily disabled due to domain model serialization issues
+// import org.springframework.cache.annotation.CacheEvict;
+// import org.springframework.cache.annotation.Cacheable;
+// import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -22,10 +23,10 @@ public class UserRepositoryAdapter implements UserRepository {
     private final UserJpaRepository jpaRepository;
 
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "users", key = "#user.id"),
-            @CacheEvict(value = "users", key = "'email:' + #user.email.toLowerCase()")
-    })
+    // @Caching(evict = {
+    // @CacheEvict(value = "users", key = "#user.id"),
+    // @CacheEvict(value = "users", key = "'email:' + #user.email.toLowerCase()")
+    // })
     public User save(User user) {
         UserEntity entity = toEntity(user);
         UserEntity saved = jpaRepository.save(entity);
@@ -33,14 +34,14 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
-    @Cacheable(value = "users", key = "#id")
+    // @Cacheable(value = "users", key = "#id")
     public Optional<User> findById(UUID id) {
         return jpaRepository.findById(id)
                 .map(this::toDomain);
     }
 
     @Override
-    @Cacheable(value = "users", key = "'email:' + #email.toLowerCase()")
+    // @Cacheable(value = "users", key = "'email:' + #email.toLowerCase()")
     public Optional<User> findByEmail(String email) {
         return jpaRepository.findByEmailIgnoreCase(email)
                 .map(this::toDomain);

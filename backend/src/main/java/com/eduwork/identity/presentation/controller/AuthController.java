@@ -148,10 +148,14 @@ public class AuthController {
                 // Extract client IP address
                 String ipAddress = RequestUtils.getClientIpAddress(httpRequest);
 
+                // Extract User-Agent for session tracking
+                String deviceInfo = httpRequest.getHeader("User-Agent");
+
                 // Map REST DTO to application command
                 LoginCommand command = LoginCommand.builder()
                                 .email(request.getEmail())
                                 .password(request.getPassword())
+                                .deviceInfo(deviceInfo)
                                 .build();
 
                 // Execute use case with IP address

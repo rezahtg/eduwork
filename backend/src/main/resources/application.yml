@@ -20,11 +20,11 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate  # Let Flyway manage schema
+      ddl-auto: update  # Hibernate manages schema when Flyway is disabled
     show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           batch_size: 20
         order_inserts: true
@@ -32,7 +32,7 @@ spring:
   
   # Flyway Configuration
   flyway:
-    enabled: true  # ✅ Re-enabled - PostgreSQL connection resolved
+    enabled: false  # Disabled for testing - Hibernate manages schema
     baseline-on-migrate: true
     locations: classpath:db/migration
     schemas: public
@@ -42,13 +42,23 @@ spring:
     redis:
       host: localhost
       port: 6379
-      password:
-      timeout: 60000
+      password: # No password for local dev
+      timeout: 2000ms
       jedis:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  
+  
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000  # 30 minutes default TTL
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "eduwork:"
   
   # Elasticsearch Configuration
   elasticsearch:
@@ -169,3 +179,10 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
   show-actuator: false
+
+# MinIO Configuration (S3-compatible object storage)
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: eduwork-kyc

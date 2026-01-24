@@ -15,4 +15,5 @@ import lombok.NoArgsConstructor;
 public class LoginCommand {
     private String email;
     private String password;
+    private String deviceInfo; // User agent / device information for session tracking
 }

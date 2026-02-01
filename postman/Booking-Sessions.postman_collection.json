@@ -1,0 +1,371 @@
+{
+    "info": {
+        "name": "Eduwork - Booking & Sessions",
+        "description": "API collection for booking sessions and session discovery",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{studentAccessToken}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080/api/v1",
+            "type": "string"
+        },
+        {
+            "key": "studentAccessToken",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "sessionId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "bookingId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Session Discovery",
+            "item": [
+                {
+                    "name": "Search Sessions - All",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/sessions?limit=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "20",
+                                    "description": "Max results (default 50, max 100)"
+                                }
+                            ]
+                        },
+                        "description": "Search all available sessions (public endpoint)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search Sessions - GROUP Only",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/sessions?sessionType=GROUP&limit=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "sessionType",
+                                    "value": "GROUP",
+                                    "description": "ONE_ON_ONE or GROUP"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Filter sessions by type (GROUP sessions only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search Sessions - By Price Range",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/sessions?minPrice=50000&maxPrice=200000&limit=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "minPrice",
+                                    "value": "50000",
+                                    "description": "Minimum price in IDR"
+                                },
+                                {
+                                    "key": "maxPrice",
+                                    "value": "200000",
+                                    "description": "Maximum price in IDR"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "20"
+                                }
+                            ]
+                        },
+                        "description": "Filter sessions by price range"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Session Details",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/sessions/{{sessionId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "{{sessionId}}"
+                            ]
+                        },
+                        "description": "Get details of a specific session (public endpoint). Set {{sessionId}} variable first."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Public endpoints for discovering and viewing sessions"
+        },
+        {
+            "name": "Booking Flow",
+            "item": [
+                {
+                    "name": "1. Book Session",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Save booking ID for next requests",
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('bookingId', response.bookingId);",
+                                    "    console.log('Booking ID saved:', response.bookingId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        },
+                        "description": "Book a session. Requires authentication. Payment must be completed within 24 hours.\n\n**Prerequisites:**\n1. Set {{studentAccessToken}} from login\n2. Set {{sessionId}} from session search\n\n**Response:**\n- bookingId (save this for next steps)\n- message with payment deadline"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "2. Confirm Payment",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"paymentReference\": \"PAY-{{$randomInt}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}/confirm-payment",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}",
+                                "confirm-payment"
+                            ]
+                        },
+                        "description": "Confirm that payment has been made. Uses {{bookingId}} from previous step.\n\n**Prerequisites:**\n1. Complete 'Book Session' first\n2. {{bookingId}} variable should be set\n3. Payment made via external gateway\n\n**Note:** Payment reference is from your payment gateway (e.g., Midtrans, Xendit)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "3. Get My Bookings",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/my",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "my"
+                            ]
+                        },
+                        "description": "Get all bookings for the authenticated student. Shows:\n- Booking history\n- Payment status\n- Platform fee (15%)\n- Mentor payout (85%)\n- Refund amounts (if cancelled)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "4. Cancel Booking",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}"
+                            ]
+                        },
+                        "description": "Cancel a booking with automatic refund calculation.\n\n**Refund Policy:**\n- 7+ days before: 100% refund (minus 15% platform fee)\n- 3-7 days: 70% refund (minus 15% platform fee)\n- 1-3 days: 50% refund (minus 15% platform fee)\n- <24 hours: 25% refund (minus 15% platform fee)\n\n**Example:**\nIf you paid 150,000 IDR and cancel 5 days before:\n- Platform fee (non-refundable): 22,500 IDR\n- Refundable base: 127,500 IDR\n- 70% tier: 89,250 IDR refund"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Complete booking flow: Book → Pay → Confirm or Cancel"
+        },
+        {
+            "name": "Test Scenarios",
+            "item": [
+                {
+                    "name": "Concurrent Booking Test (Manual)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        },
+                        "description": "**Test optimistic locking:**\n\n1. Find a session with 1 slot remaining (currentEnrollment = maxStudents - 1)\n2. Open this request in 2 tabs\n3. Click 'Send' simultaneously in both tabs\n4. One should succeed (201 Created)\n5. Other should fail with OptimisticLockException or \"Session full\"\n\nThis proves race condition prevention is working."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Book Already Booked Session (Should Fail)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        },
+                        "description": "**Test duplicate booking prevention:**\n\n1. Book a session once (success)\n2. Try to book the same session again with same student\n3. Should fail with DuplicateBookingException\n\nExpected error: \"Student already has a booking for this session\""
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Confirm Payment After Deadline (Should Fail)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"paymentReference\": \"PAY-EXPIRED\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}/confirm-payment",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}",
+                                "confirm-payment"
+                            ]
+                        },
+                        "description": "**Test payment deadline enforcement:**\n\n1. Book a session\n2. Wait 24+ hours (or temporarily reduce deadline in code for testing)\n3. Try to confirm payment\n4. Should fail with PaymentDeadlineExpiredException\n\nNote: For real testing, you may need to:\n- Change payment deadline to 1 minute in Session.java\n- Or manually update payment_deadline in database to past time"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Edge case testing scenarios"
+        }
+    ]
+}

@@ -1,0 +1,1122 @@
+{
+    "info": {
+        "_postman_id": "eduwork-platform-v2",
+        "name": "Eduwork Platform API v2",
+        "description": "**Multi-Environment API Testing Suite**\n\n## 🎯 Features\n- ✅ **Auto-Authentication**: No manual login/logout\n- 🔄 **Auto-Token Refresh**: Handles expired tokens  \n- 🎭 **Multi-Role Testing**: Switch between Student/Mentor/Public\n- 📦 **Variable Auto-Capture**: IDs automatically saved\n\n## 📚 Environments\n1. **Eduwork - Student**: student@example.com\n2. **Eduwork - Mentor**: mentor@example.com\n3. **Eduwork - Public**: No authentication\n\n## 🚀 Usage\n1. Select an environment (top right)\n2. Run any request - auth is automatic!\n3. Switch environments to test different users\n\n## 📖 Full Guide\nSee `TESTING-GUIDE.md` for complete documentation",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "🔐 Authentication & Registration",
+            "item": [
+                {
+                    "name": "Register",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Registration successful\", function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        pm.expect(jsonData.success).to.be.true;",
+                                    "        pm.expect(jsonData.data).to.have.property('id');",
+                                    "        ",
+                                    "        // Save user data",
+                                    "        pm.environment.set('userId', jsonData.data.id);",
+                                    "        console.log('✅ User registered:', jsonData.data.email);",
+                                    "    } else if (pm.response.code === 400) {",
+                                    "        console.log('ℹ️ User already exists - proceeding with login');",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"phone\": \"+628123456789{{userRole}}\",\n  \"role\": \"{{userRole}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Register user based on selected environment (STUDENT or MENTOR)"
+                    }
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Login successful\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    ",
+                                    "    pm.expect(jsonData.success).to.be.true;",
+                                    "    pm.expect(jsonData.data).to.have.property('accessToken');",
+                                    "    ",
+                                    "    // Save tokens",
+                                    "    pm.environment.set('accessToken', jsonData.data.accessToken);",
+                                    "    pm.environment.set('refreshToken', jsonData.data.refreshToken);",
+                                    "    ",
+                                    "    console.log('✅ Logged in as', pm.environment.get('userRole'));",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Login with credentials from environment"
+                    }
+                },
+                {
+                    "name": "Verify Email",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "console.log('⚠️ Get verification token from MailHog: http://localhost:8025');"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Email verified\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Email verified successfully');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/verify-email?token={{verificationToken}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "verify-email"
+                            ],
+                            "query": [
+                                {
+                                    "key": "token",
+                                    "value": "{{verificationToken}}"
+                                }
+                            ]
+                        },
+                        "description": "Verify email using token from MailHog"
+                    }
+                },
+                {
+                    "name": "Resend Verification Email",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/resend-verification",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "resend-verification"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Refresh Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.environment.set('accessToken', jsonData.data.accessToken);",
+                                    "    pm.environment.set('refreshToken', jsonData.data.refreshToken);",
+                                    "    console.log('✅ Tokens refreshed');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/refresh",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "refresh"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    pm.environment.set('accessToken', '');",
+                                    "    pm.environment.set('refreshToken', '');",
+                                    "    console.log('✅ Logged out - tokens cleared');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "description": "User registration, login, and authentication management",
+            "auth": {
+                "type": "noauth"
+            }
+        },
+        {
+            "name": "🔑 Password Reset",
+            "item": [
+                {
+                    "name": "Request Password Reset",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Reset email sent\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Check MailHog for reset token: http://localhost:8025');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "forgot-password"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NewSecurePass123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/reset-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "reset-password"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "auth": {
+                "type": "noauth"
+            }
+        },
+        {
+            "name": "👤 Profile Management",
+            "item": [
+                {
+                    "name": "Get My Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/users/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Complete Student Profile",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Profile completed\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.data.profileComplete).to.be.true;",
+                                    "    console.log('✅ Student profile completed');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"gradeLevel\": 12,\n  \"schoolName\": \"SMA Negeri 1 Jakarta\",\n  \"bio\": \"High school student preparing for university entrance exams.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/users/me/profile/student",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "me",
+                                "profile",
+                                "student"
+                            ]
+                        },
+                        "description": "Complete student profile (Student environment only)"
+                    }
+                },
+                {
+                    "name": "Complete Mentor Profile",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Profile completed\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.data.profileComplete).to.be.true;",
+                                    "    console.log('✅ Mentor profile completed');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"bio\": \"Experienced mathematics teacher with 5+ years of experience.\",\n  \"qualifications\": \"Certified Teacher\",\n  \"education\": \"S1 Pendidikan Matematika, Universitas Indonesia (2018)\",\n  \"certifications\": \"Certified Mathematics Teacher\",\n  \"portfolio\": \"https://example.com/portfolio\",\n  \"hourlyRateIdr\": 150000\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/users/me/profile/mentor",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "me",
+                                "profile",
+                                "mentor"
+                            ]
+                        },
+                        "description": "Complete mentor profile (Mentor environment only)"
+                    }
+                }
+            ],
+            "auth": {
+                "type": "bearer",
+                "bearer": [
+                    {
+                        "key": "token",
+                        "value": "{{accessToken}}",
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "📅 Schedule Module (MENTOR)",
+            "item": [
+                {
+                    "name": "Create Schedule",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Schedule created\", function () {",
+                                    "    pm.response.to.have.status(201);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    ",
+                                    "    pm.expect(jsonData.id).to.exist;",
+                                    "    pm.expect(jsonData.status).to.eql('DRAFT');",
+                                    "    ",
+                                    "    // Save schedule ID for other requests",
+                                    "    pm.environment.set('scheduleId', jsonData.id);",
+                                    "    console.log('✅ Schedule created:', jsonData.id);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Mathematics Tutoring - March 2026\",\n  \"description\": \"Calculus and algebra sessions for university students\",\n  \"timezone\": \"Asia/Jakarta\",\n  \"timeSlots\": [\n    {\n      \"startTime\": \"2026-03-10T09:00:00\",\n      \"endTime\": \"2026-03-10T11:00:00\"\n    },\n    {\n      \"startTime\": \"2026-03-10T14:00:00\",\n      \"endTime\": \"2026-03-10T16:00:00\"\n    },\n    {\n      \"startTime\": \"2026-03-11T09:00:00\",\n      \"endTime\": \"2026-03-11T12:00:00\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules"
+                            ]
+                        },
+                        "description": "Create a new schedule (DRAFT status)"
+                    }
+                },
+                {
+                    "name": "Get My Schedules",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Schedules retrieved\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.be.an('array');",
+                                    "    console.log('✅ Found', jsonData.length, 'schedule(s)');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/my",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "my"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Schedule Details",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/{{scheduleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "{{scheduleId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Schedule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Mathematics Tutoring - March 2026 (Updated)\",\n  \"description\": \"Updated: Advanced calculus sessions\",\n  \"timeSlotUpdates\": [\n    {\n      \"startTime\": \"2026-03-12T10:00:00\",\n      \"endTime\": \"2026-03-12T12:00:00\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/{{scheduleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "{{scheduleId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Publish Schedule",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Schedule published\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('PUBLISHED');",
+                                    "    console.log('✅ Schedule published');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/{{scheduleId}}/publish",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "{{scheduleId}}",
+                                "publish"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Cancel Schedule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/{{scheduleId}}/cancel",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "{{scheduleId}}",
+                                "cancel"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "description": "Schedule CRUD operations (Mentor environment only)",
+            "auth": {
+                "type": "bearer",
+                "bearer": [
+                    {
+                        "key": "token",
+                        "value": "{{accessToken}}",
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "🔍 Schedule Discovery (PUBLIC)",
+            "item": [
+                {
+                    "name": "Search Schedules",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Search successful\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    ",
+                                    "    pm.expect(jsonData).to.be.an('array');",
+                                    "    console.log('✅ Found', jsonData.length, 'published schedule(s)');",
+                                    "    ",
+                                    "    // Save first schedule ID if exists",
+                                    "    if (jsonData.length > 0) {",
+                                    "        pm.environment.set('scheduleId', jsonData[0].id);",
+                                    "        pm.expect(jsonData[0].status).to.eql('PUBLISHED');",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/search?keyword=Mathematics&startDate=2026-03-01T00:00:00&endDate=2026-03-31T23:59:59&page=0&size=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "keyword",
+                                    "value": "Mathematics"
+                                },
+                                {
+                                    "key": "startDate",
+                                    "value": "2026-03-01T00:00:00"
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": "2026-03-31T23:59:59"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                }
+                            ]
+                        },
+                        "description": "Search published schedules (no authentication required)"
+                    }
+                },
+                {
+                    "name": "Search by Timezone",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/search?timezone=Asia/Jakarta&page=0&size=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "timezone",
+                                    "value": "Asia/Jakarta"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Public Schedule Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules/{{scheduleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules",
+                                "{{scheduleId}}"
+                            ]
+                        },
+                        "description": "Public access to schedule details"
+                    }
+                }
+            ],
+            "description": "Public schedule discovery (no authentication required)",
+            "auth": {
+                "type": "noauth"
+            }
+        },
+        {
+            "name": "🧪 Quality Constraint Tests",
+            "item": [
+                {
+                    "name": "❌ Exceeds 8 Hours (Should Fail)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Constraint violation detected\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.error).to.exist;",
+                                    "    console.log('✅ Correctly rejected: Exceeds 8 hours');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Test: Too Many Hours\",\n  \"timezone\": \"Asia/Jakarta\",\n  \"timeSlots\": [\n    {\n      \"startTime\": \"2026-03-15T08:00:00\",\n      \"endTime\": \"2026-03-15T12:00:00\"\n    },\n    {\n      \"startTime\": \"2026-03-15T13:00:00\",\n      \"endTime\": \"2026-03-15T18:00:00\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules"
+                            ]
+                        },
+                        "description": "Test: 9 hours in one day (should fail - max 8 hours)"
+                    }
+                },
+                {
+                    "name": "❌ Insufficient Rest (Should Fail)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Insufficient rest detected\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "    console.log('✅ Correctly rejected: Insufficient rest');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Test: Insufficient Rest\",\n  \"timezone\": \"Asia/Jakarta\",\n  \"timeSlots\": [\n    {\n      \"startTime\": \"2026-03-16T09:00:00\",\n      \"endTime\": \"2026-03-16T10:00:00\"\n    },\n    {\n      \"startTime\": \"2026-03-16T10:05:00\",\n      \"endTime\": \"2026-03-16T11:00:00\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules"
+                            ]
+                        },
+                        "description": "Test: 5 min rest (should fail - min 15 min required)"
+                    }
+                },
+                {
+                    "name": "❌ Overlapping Slots (Should Fail)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Overlapping slots detected\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "    console.log('✅ Correctly rejected: Overlapping slots');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{accessToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Test: Overlapping Slots\",\n  \"timezone\": \"Asia/Jakarta\",\n  \"timeSlots\": [\n    {\n      \"startTime\": \"2026-03-17T09:00:00\",\n      \"endTime\": \"2026-03-17T11:00:00\"\n    },\n    {\n      \"startTime\": \"2026-03-17T10:30:00\",\n      \"endTime\": \"2026-03-17T12:00:00\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedules"
+                            ]
+                        },
+                        "description": "Test: Overlapping time slots (should fail)"
+                    }
+                }
+            ],
+            "description": "Quality constraint validation tests",
+            "auth": {
+                "type": "bearer",
+                "bearer": [
+                    {
+                        "key": "token",
+                        "value": "{{accessToken}}",
+                        "type": "string"
+                    }
+                ]
+            }
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// 🤖 AUTO-AUTHENTICATION SCRIPT",
+                    "// Automatically logs in if no valid access token exists",
+                    "",
+                    "const userRole = pm.environment.get('userRole');",
+                    "const accessToken = pm.environment.get('accessToken');",
+                    "",
+                    "// Skip auto-login for Public environment or if token exists",
+                    "if (userRole === 'GUEST' || !userRole) {",
+                    "    return; // Public environment - no auth needed",
+                    "}",
+                    "",
+                    "// Check if this request requires auth (has bearer token in auth)",
+                    "const auth = pm.request.auth;",
+                    "if (!auth || auth.type !== 'bearer') {",
+                    "    return; // No auth required for this request",
+                    "}",
+                    "",
+                    "// If no access token, perform login",
+                    "if (!accessToken) {",
+                    "    console.log('🔐 No token found - Auto-logging in as', userRole);",
+                    "    ",
+                    "    const loginRequest = {",
+                    "        url: pm.environment.get('baseUrl') + '/auth/login',",
+                    "        method: 'POST',",
+                    "        header: {'Content-Type': 'application/json'},",
+                    "        body: {",
+                    "            mode: 'raw',",
+                    "            raw: JSON.stringify({",
+                    "                email: pm.environment.get('userEmail'),",
+                    "                password: pm.environment.get('userPassword')",
+                    "            })",
+                    "        }",
+                    "    };",
+                    "    ",
+                    "    pm.sendRequest(loginRequest, function (err, response) {",
+                    "        if (err) {",
+                    "            console.error('❌ Auto-login failed:', err);",
+                    "            return;",
+                    "        }",
+                    "        ",
+                    "        if (response.code === 200) {",
+                    "            const jsonData = response.json();",
+                    "            pm.environment.set('accessToken', jsonData.data.accessToken);",
+                    "            pm.environment.set('refreshToken', jsonData.data.refreshToken);",
+                    "            console.log('✅ Auto-login successful!');",
+                    "        } else {",
+                    "            console.error('❌ Login failed with status:', response.code);",
+                    "            console.error('Response:', response.json());",
+                    "        }",
+                    "    });",
+                    "}"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Global test: Display response time",
+                    "console.log('⏱️ Response time:', pm.response.responseTime + 'ms');"
+                ]
+            }
+        }
+    ]
+}

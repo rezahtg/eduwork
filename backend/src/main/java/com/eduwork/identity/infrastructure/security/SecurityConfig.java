@@ -43,7 +43,10 @@ public class SecurityConfig {
                         // Public endpoints (no authentication required)
                         // Support both /auth/** and /api/v1/auth/** for compatibility
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+
+                        // Schedule search (public for students)
+                        .requestMatchers("/schedules/search").permitAll()
+                        .requestMatchers("/schedules/{id}").permitAll() // Public schedule details
 
                         // Swagger/OpenAPI (if you add it later)
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()

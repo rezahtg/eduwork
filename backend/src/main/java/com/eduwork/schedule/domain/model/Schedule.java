@@ -1,6 +1,8 @@
 package com.eduwork.schedule.domain.model;
 
+import com.eduwork.common.domain.Money;
 import com.eduwork.schedule.domain.exception.ScheduleValidationException;
+import com.eduwork.schedule.domain.model.session.Session;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,6 +33,13 @@ public class Schedule {
     private ScheduleStatus status;
     private ZoneId timezone; // For calendar integration (e.g., "Asia/Jakarta")
     private List<TimeSlot> timeSlots;
+
+    // Session configuration (for generating bookable sessions)
+    private String subject; // e.g., "Mathematics", "Physics"
+    private SessionType sessionType; // ONE_ON_ONE or GROUP
+    private Capacity capacity; // min/max students
+    private Money pricePerStudent;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
@@ -43,7 +52,11 @@ public class Schedule {
             String description,
             ScheduleType type,
             ZoneId timezone,
-            List<TimeSlot> timeSlots) {
+            List<TimeSlot> timeSlots,
+            String subject,
+            SessionType sessionType,
+            Capacity capacity,
+            Money pricePerStudent) {
         this.id = id != null ? id : UUID.randomUUID();
         this.mentorId = requireNonNull(mentorId, "Mentor ID is required");
         this.title = requireNonNull(title, "Title is required");
@@ -52,6 +65,10 @@ public class Schedule {
         this.status = ScheduleStatus.DRAFT;
         this.timezone = timezone != null ? timezone : ZoneId.systemDefault();
         this.timeSlots = new ArrayList<>(timeSlots != null ? timeSlots : Collections.emptyList());
+        this.subject = subject;
+        this.sessionType = sessionType;
+        this.capacity = capacity;
+        this.pricePerStudent = pricePerStudent;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -124,12 +141,15 @@ public class Schedule {
 
     /**
      * Publish this schedule, making it visible to students.
+     * Generates bookable Session aggregates from TimeSlots.
      * 
+     * @return List of generated Sessions
      * @throws ScheduleValidationException if quality constraints are violated
      */
-    public void publish() {
+    public List<Session> publish() {
         if (this.status == ScheduleStatus.PUBLISHED) {
-            return; // Already published
+            // Already published - return empty list
+            return Collections.emptyList();
         }
 
         if (this.status == ScheduleStatus.CANCELLED) {
@@ -140,9 +160,41 @@ public class Schedule {
             throw new ScheduleValidationException("Cannot publish a schedule without time slots");
         }
 
+        // Validate session configuration
+        if (this.sessionType == null) {
+            throw new ScheduleValidationException("Session type is required for publishing");
+        }
+        if (this.capacity == null) {
+            throw new ScheduleValidationException("Capacity is required for publishing");
+        }
+        if (this.pricePerStudent == null) {
+            throw new ScheduleValidationException("Price per student is required for publishing");
+        }
+
+        // Generate Session aggregates from TimeSlots
+        List<Session> generatedSessions = new ArrayList<>();
+        for (TimeSlot slot : this.timeSlots) {
+            if (slot.getStatus() == TimeSlotStatus.AVAILABLE) {
+                Session session = Session.create(
+                        this.id, // scheduleId
+                        slot.getStartTime(),
+                        slot.getEndTime(),
+                        this.sessionType,
+                        this.capacity,
+                        this.pricePerStudent);
+                generatedSessions.add(session);
+
+                // Publish the session (DRAFT → OPEN)
+                session.publish();
+            }
+        }
+
+        // Update schedule status
         this.status = ScheduleStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+
+        return generatedSessions;
     }
 
     /**

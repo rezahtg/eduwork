@@ -1,8 +1,10 @@
 package com.eduwork.schedule.presentation.controller;
 
 import com.eduwork.schedule.application.query.SearchSessionsQuery;
+import com.eduwork.schedule.application.usecase.CompleteSessionUseCase;
 import com.eduwork.schedule.application.usecase.GetSessionDetailsUseCase;
 import com.eduwork.schedule.application.usecase.SearchSessionsUseCase;
+import com.eduwork.schedule.application.usecase.StartSessionUseCase;
 import com.eduwork.schedule.domain.model.SessionType;
 import com.eduwork.schedule.domain.model.session.Session;
 import com.eduwork.schedule.presentation.dto.SessionResponse;
@@ -34,6 +36,8 @@ public class ScheduleSessionController {
 
         private final SearchSessionsUseCase searchSessionsUseCase;
         private final GetSessionDetailsUseCase getSessionDetailsUseCase;
+        private final StartSessionUseCase startSessionUseCase;
+        private final CompleteSessionUseCase completeSessionUseCase;
 
         /**
          * Search for available sessions.
@@ -91,5 +95,41 @@ public class ScheduleSessionController {
                 Session session = getSessionDetailsUseCase.execute(sessionId);
 
                 return ResponseEntity.ok(SessionResponse.from(session));
+        }
+
+        /**
+         * Manually start a session (mentor action).
+         * Changes status from CONFIRMED to IN_PROGRESS.
+         * 
+         * @param sessionId Session ID
+         * @return Updated session details
+         */
+        @PutMapping("/{sessionId}/start")
+        @Operation(summary = "Start session", description = "Manually start a confirmed session")
+        public ResponseEntity<SessionResponse> startSession(
+                        @PathVariable UUID sessionId) {
+                log.info("Starting session {}", sessionId);
+
+                var response = startSessionUseCase.execute(sessionId);
+
+                return ResponseEntity.ok(SessionResponse.from(response));
+        }
+
+        /**
+         * Manually complete a session (mentor action).
+         * Changes status from IN_PROGRESS to COMPLETED.
+         * 
+         * @param sessionId Session ID
+         * @return Updated session details
+         */
+        @PutMapping("/{sessionId}/complete")
+        @Operation(summary = "Complete session", description = "Manually complete an in-progress session")
+        public ResponseEntity<SessionResponse> completeSession(
+                        @PathVariable UUID sessionId) {
+                log.info("Completing session {}", sessionId);
+
+                var response = completeSessionUseCase.execute(sessionId);
+
+                return ResponseEntity.ok(SessionResponse.from(response));
         }
 }

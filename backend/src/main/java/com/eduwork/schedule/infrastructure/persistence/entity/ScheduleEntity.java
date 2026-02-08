@@ -46,6 +46,26 @@ public class ScheduleEntity {
     @Column(name = "timezone", nullable = false, length = 100)
     private String timezone;
 
+    // Session configuration fields (for generating bookable sessions)
+    @Column(name = "subject", length = 255)
+    private String subject;
+
+    @Column(name = "session_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private SessionTypeEnum sessionType;
+
+    @Column(name = "min_students")
+    private Integer minStudents;
+
+    @Column(name = "max_students")
+    private Integer maxStudents;
+
+    @Column(name = "price_amount", precision = 19, scale = 4)
+    private java.math.BigDecimal priceAmount;
+
+    @Column(name = "price_currency", length = 3)
+    private String priceCurrency;
+
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<TimeSlotEntity> timeSlots = new ArrayList<>();
@@ -95,5 +115,9 @@ public class ScheduleEntity {
 
     public enum ScheduleStatusEnum {
         DRAFT, PUBLISHED, CANCELLED
+    }
+
+    public enum SessionTypeEnum {
+        ONE_ON_ONE, GROUP
     }
 }

@@ -1,8 +1,10 @@
 package com.eduwork.schedule.presentation.controller;
 
 import com.eduwork.schedule.application.command.CreateScheduleCommand;
+import com.eduwork.schedule.application.command.PublishScheduleCommand;
 import com.eduwork.schedule.application.command.UpdateScheduleCommand;
 import com.eduwork.schedule.application.dto.ScheduleResponseDTO;
+import com.eduwork.schedule.application.dto.ScheduleWithSessionsResponseDTO;
 import com.eduwork.schedule.application.usecase.*;
 import com.eduwork.schedule.presentation.dto.CreateScheduleRequest;
 import com.eduwork.schedule.presentation.dto.UpdateScheduleRequest;
@@ -36,7 +38,7 @@ public class ScheduleController {
 
         private final CreateScheduleUseCase createScheduleUseCase;
         private final UpdateScheduleUseCase updateScheduleUseCase;
-        private final PublishScheduleUseCase publishScheduleUseCase;
+        private final PublishScheduleWithSessionsUseCase publishScheduleWithSessionsUseCase;
         private final CancelScheduleUseCase cancelScheduleUseCase;
         private final GetMySchedulesUseCase getMySchedulesUseCase;
         private final GetScheduleDetailsUseCase getScheduleDetailsUseCase;
@@ -108,15 +110,22 @@ public class ScheduleController {
 
         /**
          * Publish a schedule (make it available for bookings).
+         * Generates bookable sessions from time slots.
          */
         @PostMapping("/{scheduleId}/publish")
-        public ResponseEntity<ScheduleResponseDTO> publishSchedule(
+        public ResponseEntity<ScheduleWithSessionsResponseDTO> publishSchedule(
                         @PathVariable UUID scheduleId,
                         @AuthenticationPrincipal String userId) {
                 log.info("Publishing schedule: {}", scheduleId);
 
                 UUID mentorId = UUID.fromString(userId);
-                ScheduleResponseDTO response = publishScheduleUseCase.execute(scheduleId, mentorId);
+
+                PublishScheduleCommand command = PublishScheduleCommand.builder()
+                                .scheduleId(scheduleId)
+                                .mentorId(mentorId)
+                                .build();
+
+                ScheduleWithSessionsResponseDTO response = publishScheduleWithSessionsUseCase.execute(command);
 
                 return ResponseEntity.ok(response);
         }
